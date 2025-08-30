@@ -176,7 +176,8 @@ def main():
     
     args = parser.parse_args()
 
-    add_name(args.add_name)
+    if args.add_name:
+        add_name(args.add_name)
 
     server = args.server
     if not server:
