@@ -35,6 +35,8 @@ def get_last_checked(replay_dir):
 
 def get_revealed_players():
     if not os.path.exists("revealed_players.json"):
+        with open("revealed_players.json", "w") as file:
+            json.dump({}, file, indent=4)
         return {}
     with open("revealed_players.json", "r") as file:
         try:
@@ -49,7 +51,7 @@ def set_revealed_players(json_dict):
 def get_names():
     path = "names.txt"
     if not os.path.exists(path):
-        print("Please add a name using the flag \"-a \{name\}\" or \"--add-name \{name\}\"")
+        return None
     with open(path, 'r') as file:
         return [name.strip() for name in file.readlines()]
 
@@ -61,7 +63,9 @@ def rename_replays(server):
     }
 
     my_names = get_names()
-
+    if not my_names:
+        print('Please add a name using the flag "-a {name}" or "--add-name {name}"')
+        return
     replay_directory = replay_directories[server.lower()]
 
     last_checked = get_last_checked(replay_directory)
