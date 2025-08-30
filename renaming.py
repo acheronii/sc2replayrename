@@ -1,9 +1,13 @@
 import sc2reader
+import requests
 import os
 import datetime
 import json 
 import re 
 import argparse
+import time
+
+API_BASE = f"https://sc2pulse.nephest.com/sc2/api/character/search?term="
 
 def sanitize_filename(name):
     # Replace bad filename characters with underscores
@@ -29,6 +33,19 @@ def get_last_checked(replay_dir):
 
     return last_checked
 
+def get_revealed_players():
+    if not os.path.exists("revealed_players.json"):
+        return {}
+    with open("revealed_players.json", "r") as file:
+        try:
+            return json.load(file)
+        except json.JSONDecodeError:
+            return {}
+
+def set_revealed_players(json_dict):
+    with open("revealed_players.json", "w") as file:
+        json.dump(json_dict, file, indent=4)
+
 def get_names():
     path = "names.txt"
 
@@ -40,8 +57,8 @@ def get_names():
 def rename_replays(server):
     # === Configuration ===
     replay_directories = {
-    "na": "/mnt/c/Users/Jrchu/OneDrive/Documents/StarCraft II/Accounts/65253659/1-S2-1-1656173/Replays/Multiplayer/",
-    "eu": "/mnt/c/Users/Jrchu/OneDrive/Documents/StarCraft II/Accounts/65253659/2-S2-1-9688821/Replays/Multiplayer/"
+    "na": "/mnt/c/Users/Jrchu/Documents/StarCraft II/Accounts/65253659/1-S2-1-1656173/Replays/Multiplayer/",
+    "eu": "/mnt/c/Users/Jrchu/Documents/StarCraft II/Accounts/65253659/2-S2-1-9688821/Replays/Multiplayer/"
     }
 
     my_names = get_names()
@@ -49,6 +66,8 @@ def rename_replays(server):
     replay_directory = replay_directories[server.lower()]
 
     last_checked = get_last_checked(replay_directory)
+
+    revealed_players = get_revealed_players()
 
     count = 0
 
@@ -84,9 +103,38 @@ def rename_replays(server):
 
             # Build new filename
             map_name = replay.map_name.replace(" ", "_")
-            opp_name = opponent.name.replace(" ", "_")
             opp_race = opponent.play_race[0]
+            opp_name = opponent.name
             timestamp = replay.start_time.strftime("%Y-%m-%d_%H-%M-%S")
+
+            # See if the account is revealed
+            
+            region = opponent.detail_data['bnet']['region']
+            subregion = opponent.detail_data['bnet']['subregion']
+            uid = opponent.detail_data['bnet']['uid']
+            search_term = f'https://starcraft2.blizzard.com/en-us/profile/{region}/{subregion}/{uid}'
+
+            # if we have seen the player before
+            if search_term in revealed_players.keys():
+                if revealed_players[search_term] == -1: # if we dont know who it is
+                    pass # keep the name in replay
+                else:
+                    opp_name = revealed_players[search_term] # if we know who it is
+            # if we have not seen the player, search using sc2pulse
+            else:
+                url = API_BASE + search_term
+                response = requests.get(url)
+                player_id_data = json.loads(response.text)
+                # if pulse has information
+                if player_id_data and "proNickname" in player_id_data[0]['members']:
+                    # set the name on the replay and in our datastructure
+                    opp_name = player_id_data[0]['members']["proNickname"]
+                    revealed_players[search_term] = opp_name 
+                else:
+                    # keep the name, but mark that pulse has no data
+                    revealed_players[search_term] = -1
+                # wait 0.25s to avoid rate limits on sc2pulse's api
+                time.sleep(0.25)
 
             new_name = sanitize_filename(f"{map_name}_{opp_name}_{opp_race}_{timestamp}.SC2Replay")
             new_path = os.path.join(replay_directory, new_name)
@@ -106,6 +154,8 @@ def rename_replays(server):
         print(f"Modified {count} replays to have a legible name")
     else:
         print("No necessary replay name changes")
+
+    set_revealed_players(revealed_players)
 
 def add_name(name):
     names = get_names()
