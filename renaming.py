@@ -48,9 +48,8 @@ def set_revealed_players(json_dict):
 
 def get_names():
     path = "names.txt"
-
-    data = []
-
+    if not os.path.exists(path):
+        print("Please add a name using the flag \"-a \{name\}\" or \"--add-name \{name\}\"")
     with open(path, 'r') as file:
         return [name.strip() for name in file.readlines()]
 
@@ -170,7 +169,7 @@ def main():
         description="Changes the names of replays to MAP_OPPONENT_RACE_DATETIME"
     )
     
-    parser.add_argument("-a", "--add_name", type=str)
+    parser.add_argument("-a", "--add-name", type=str)
 
     parser.add_argument("-s", "--server", type=str)
     
