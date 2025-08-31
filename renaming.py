@@ -9,6 +9,12 @@ import time
 
 API_BASE = f"https://sc2pulse.nephest.com/sc2/api/character/search?term="
 
+# config
+REPLAY_DIRECTORIES = {
+"na": "/mnt/c/Users/Jrchu/Documents/StarCraft II/Accounts/65253659/1-S2-1-1656173/Replays/Multiplayer/",
+"eu": "/mnt/c/Users/Jrchu/Documents/StarCraft II/Accounts/65253659/2-S2-1-9688821/Replays/Multiplayer/"
+}
+
 def sanitize_filename(name):
     # Replace bad filename characters with underscores
     return re.sub(r'[<>:"/\\|?*]', '_', name)
@@ -56,17 +62,15 @@ def get_names():
         return [name.strip() for name in file.readlines()]
 
 def rename_replays(server):
-    # === Configuration ===
-    replay_directories = {
-    "na": "/mnt/c/Users/Jrchu/Documents/StarCraft II/Accounts/65253659/1-S2-1-1656173/Replays/Multiplayer/",
-    "eu": "/mnt/c/Users/Jrchu/Documents/StarCraft II/Accounts/65253659/2-S2-1-9688821/Replays/Multiplayer/"
-    }
+    
 
     my_names = get_names()
+    
     if not my_names:
         print('Please add a name using the flag "-a {name}" or "--add-name {name}"')
         return
-    replay_directory = replay_directories[server.lower()]
+        
+    replay_directory = REPLAY_DIRECTORIES[server.lower()]
 
     last_checked = get_last_checked(replay_directory)
 
@@ -74,7 +78,7 @@ def rename_replays(server):
 
     count = 0
 
-    # === Process each replay file ===
+    # process files
     for filename in os.listdir(replay_directory):
         if not filename.endswith(".SC2Replay"):
             continue
