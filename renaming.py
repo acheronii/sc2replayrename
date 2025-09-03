@@ -8,6 +8,7 @@ import argparse
 import time
 
 API_BASE = f"https://sc2pulse.nephest.com/sc2/api/character/search?term="
+LOCAL_PWD = os.path.dirname(os.path.abspath(__file__))
 
 # config
 REPLAY_DIRECTORIES = {
@@ -21,7 +22,7 @@ def sanitize_filename(name):
 
 def get_last_checked(replay_dir):
 
-    json_file = "date.json"
+    json_file = os.path.join(LOCAL_PWD, "date.json")
     date_format = "%Y-%m-%d %H:%M:%S"
 
     with open(json_file, 'r') as file:
@@ -40,25 +41,29 @@ def get_last_checked(replay_dir):
     return last_checked
 
 def get_revealed_players():
-    if not os.path.exists("revealed_players.json"):
-        with open("revealed_players.json", "w") as file:
+    revealed_players_path = os.path.join(LOCAL_PWD, "revealed_players.json")
+
+    if not os.path.exists(revealed_players_path):
+        with open(revealed_players_path, "w") as file:
             json.dump({}, file, indent=4)
         return {}
-    with open("revealed_players.json", "r") as file:
+    with open(revealed_players_path, "r") as file:
         try:
             return json.load(file)
         except json.JSONDecodeError:
             return {}
 
 def set_revealed_players(json_dict):
-    with open("revealed_players.json", "w") as file:
+    revealed_players_path = os.path.join(LOCAL_PWD, "revealed_players.json")
+
+    with open(revealed_players_path, "w") as file:
         json.dump(json_dict, file, indent=4)
 
 def get_names():
-    path = "names.txt"
-    if not os.path.exists(path):
+    names_path = os.path.join(LOCAL_PWD, "names.txt")
+    if not os.path.exists(names_path):
         return None
-    with open(path, 'r') as file:
+    with open(names_path, 'r') as file:
         return [name.strip() for name in file.readlines()]
 
 def rename_replays(server):
@@ -72,7 +77,7 @@ def rename_replays(server):
         
     replay_directory = REPLAY_DIRECTORIES[server.lower()]
 
-    last_checked = get_last_checked(replay_directory)
+    last_checked = get_last_checked(replay_directory).timestamp()
 
     revealed_players = get_revealed_players()
 
@@ -85,7 +90,7 @@ def rename_replays(server):
         old_path = os.path.join(replay_directory, filename)
 
         # skip old replays
-        if datetime.datetime.fromtimestamp(os.path.getmtime(old_path)) < last_checked:
+        if os.path.getmtime(old_path) < last_checked:
             continue
         try:
 
@@ -143,7 +148,7 @@ def rename_replays(server):
                 # wait 0.25s to avoid rate limits on sc2pulse's api
                 time.sleep(0.25)
 
-            new_name = sanitize_filename(f"{map_name}_{opp_name}_{opp_race}_{timestamp}.SC2Replay")
+            new_name = sanitize_filename(f"{opp_race}_{opp_name}_{map_name}_{timestamp}.SC2Replay")
             new_path = os.path.join(replay_directory, new_name)
 
             # Avoid accidental overwrite
@@ -185,6 +190,7 @@ def main():
 
     if args.add_name:
         add_name(args.add_name)
+        return
 
     server = args.server
     if not server:
